@@ -21,7 +21,7 @@ from category2class import c2c
 ## Settings
 
 # if True, the script will use the predefined curriculum, otherwise, the script will scrape the curriculum from the website
-use_predifned_curriculum = True # currently unuseable
+use_predifned_curriculum = False # currently unuseable
 curriculum = [
     set([2, 3, 4, 5, 8, 9]), # Monday
     set(),  # Tuesday
@@ -40,7 +40,7 @@ course_list = set()
 
 
 traverse_list = [
-    # "通識-藝術與美學",
+    "通識-藝術與美學",
     # "通識-能源環境",
     # "通識-人文思維",
     # "通識-公民與社會參與",
@@ -51,9 +51,9 @@ traverse_list = [
     # "通識-資訊能力",
     # "通識-基礎概論",
     "軍訓",
-    # "資工三",
-    # "資工四",
-    # "資工所一",
+    "資工三",
+    "資工四",
+    "資工所一",
 ]
 
 #====================================================================================================
@@ -150,7 +150,7 @@ for key, value in params:
 ch2num = {'一':1, '二':2, '三':3, '四':4, '五':5}
 alphabet2num = {'A':[1, 2], 'B':[2, 3], 'C':[4, 5], 'D':[5, 6], 'E':[7, 8], 'F':[8, 9], 'G':[10, 11], 'H':[11, 12], 'I':[13, 14], 'J':[14, 15]}
 
-def class_time_parser(class_time):
+def class_time_checker(class_time, curriculum):
     temp = class_time.split(" ")
     flag = 0
     for t in temp:
@@ -173,6 +173,52 @@ def class_time_parser(class_time):
             
     return flag
 
+def class_time_parser(class_time, curriculum):
+    temp = class_time.split(" ")
+    flag = 0
+    for t in temp:
+        if flag == 1: break
+        weekday = ch2num[t[0]] - 1
+        
+        class_time = t[1:].split(',')
+        if all(ct.isdigit() for ct in class_time):
+            class_time = list(map(int, class_time))
+        else:
+            class_time = []
+            for ct in t[1:].split(','):
+                if ct in alphabet2num:
+                    class_time += alphabet2num[ct]
+        
+        curriculum[weekday].extend(class_time)
+
+def scrape_curriculum():
+    print("="*50)
+    print("Scraping curriculum")
+    print("="*50)
+    base_url = "https://kiki.ccu.edu.tw/~ccmisp06/cgi-bin/class_new/Selected_View00.cgi"
+    target_url = get_url_builder(base_url, {"session_id": session_id})
+    driver.get(target_url)
+    
+    curriculum = [[] for _ in range(7)]
+
+    table = driver.find_element(By.CSS_SELECTOR, 'body > center > table:nth-child(6) > tbody')
+
+    credits = 0
+    for i, row in enumerate(table.find_elements(By.TAG_NAME, 'tr')):
+        if i == 0: continue
+        for j, cell in enumerate(row.find_elements(By.TAG_NAME, 'th')):
+            if j == 2:
+                print(cell.text.replace("\n", " "), end=" | ")
+            elif j == 4:
+                credits += int(cell.text)
+            elif j == 6:
+                print(cell.text, end="")
+                class_time_parser(cell.text.replace("\n", " "), curriculum)
+        print()
+        
+    print("Total credits:", credits)
+    
+    return list(map(set, curriculum))
 
 def scrape_class_data(params):
     print("="*50)
@@ -232,7 +278,7 @@ def scrape_class_data(params):
                 if j == 8:
                     info_list.append(cell.text.replace("\n", " "))
                     temp = cell.text
-                    conflicted = class_time_parser(temp)
+                    conflicted = class_time_checker(temp, curriculum)
                     if conflicted == 1 and not enrolled:
                         info_list.append("conflicted")
                         
@@ -253,16 +299,13 @@ def scrape_class_data(params):
     
     return suceess_enroll_classes
 
-# params = {
-#     "session_id": session_id,
-#     "use_cge_new_cate": 1,
-#     "dept":"4106",
-#     "grade":1,
-#     "page":1,
-#     # "cge_cate":2,
-#     # "cge_subcate":1,
-# }
+if not use_predifned_curriculum:
+    curriculum = scrape_curriculum()
 
+print("Curriculum:\n", curriculum)
+
+print("="*50)
+print("Start enrolling classes")
 for cate in traverse_list:
     params = c2c[cate]
     params["session_id"] = session_id
