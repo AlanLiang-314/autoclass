@@ -109,10 +109,12 @@ is_login = False
 for tries in range(10):
     print(f"Try {tries + 1}")
     image_element = driver.find_element(By.CSS_SELECTOR, '#captchaImage')
+    
+    img_path = os.path.join(os.path.dirname(__file__), 'captcha.png')
 
-    image_element.screenshot('captcha.png')
+    image_element.screenshot(img_path)
 
-    captcha_text = pytesseract.image_to_string(Image.open('captcha.png'))
+    captcha_text = pytesseract.image_to_string(Image.open(img_path))
     captcha_text = captcha_text.replace(" ", "")
 
     print("Captcha text:", captcha_text)
@@ -148,7 +150,7 @@ for key, value in params:
 
 
 ch2num = {'一':1, '二':2, '三':3, '四':4, '五':5}
-alphabet2num = {'A':[1, 2], 'B':[2, 3], 'C':[4, 5], 'D':[5, 6], 'E':[7, 8], 'F':[8, 9], 'G':[10, 11], 'H':[11, 12], 'I':[13, 14], 'J':[14, 15]}
+alphabet2num = {'A':[1, 2, 3], 'B':[4, 5, 6], 'C':[7, 8, 9], 'D':[10, 11, 12], 'E':[13, 14, 15], 'F':[16, 17, 18], 'G':[19, 20, 21], 'H':[22, 23, 24], 'I':[25, 26, 27], 'J':[28, 29, 30]}
 
 def class_time_checker(class_time, curriculum):
     temp = class_time.split(" ")
@@ -160,6 +162,11 @@ def class_time_checker(class_time, curriculum):
         class_time = t[1:].split(',')
         if all(ct.isdigit() for ct in class_time):
             class_time = list(map(int, class_time))
+            # split class time into two parts
+            class_time_expanded = []
+            for ct in class_time:
+                class_time_expanded.extend([2 * ct - 1, 2 * ct])
+            class_time = class_time_expanded
         else:
             class_time = []
             for ct in t[1:].split(','):
@@ -183,6 +190,12 @@ def class_time_parser(class_time, curriculum):
         class_time = t[1:].split(',')
         if all(ct.isdigit() for ct in class_time):
             class_time = list(map(int, class_time))
+            # split class time into two parts
+            class_time_expanded = []
+            for ct in class_time:
+                class_time_expanded.extend([2 * ct - 1, 2 * ct])
+            class_time = class_time_expanded
+
         else:
             class_time = []
             for ct in t[1:].split(','):
